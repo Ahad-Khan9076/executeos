@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
+import '../../meetings/application/meeting_list_provider.dart';
 import '../../tasks/application/task_list_provider.dart';
 import '../../tasks/presentation/widgets/task_tile.dart';
 import '../../tasks/presentation/create_task_sheet.dart';
@@ -20,8 +23,8 @@ class TodayScreen extends ConsumerWidget {
     final todayTasks = ref.watch(todayTasksProvider);
     final overdue = ref.watch(overdueTasksProvider);
     final completedToday = ref.watch(completedTodayProvider);
+    final todayMeetings = ref.watch(todayMeetingsProvider);
 
-    // Simple transparent score for MVP
     final totalRelevant = todayTasks.length + completedToday.length;
     final score = totalRelevant == 0
         ? null
@@ -34,11 +37,7 @@ class TodayScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.auto_awesome),
             tooltip: 'AI Coach',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('AI Coach coming soon')),
-              );
-            },
+            onPressed: () => context.go('/ai'),
           ),
         ],
       ),
@@ -101,7 +100,34 @@ class TodayScreen extends ConsumerWidget {
               ),
             ),
 
-            // Overdue section
+            // Meetings today
+            if (todayMeetings.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text(
+                'Meetings',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              ...todayMeetings.map((m) {
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: const Icon(Icons.event),
+                    title: Text(m.title),
+                    subtitle: Text(
+                      '${DateFormat('h:mm a').format(m.startAt)} – ${DateFormat('h:mm a').format(m.endAt)}',
+                    ),
+                    trailing: m.meetingLink != null
+                        ? const Icon(Icons.video_call_outlined)
+                        : null,
+                  ),
+                );
+              }),
+            ],
+
+            // Overdue
             if (overdue.isNotEmpty) ...[
               const SizedBox(height: 24),
               Text(
