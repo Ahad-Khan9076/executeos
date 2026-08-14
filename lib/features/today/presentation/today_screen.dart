@@ -1,11 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../tasks/application/task_list_provider.dart';
+import '../../tasks/presentation/widgets/task_tile.dart';
+import '../../tasks/presentation/create_task_sheet.dart';
+
 class TodayScreen extends ConsumerWidget {
   const TodayScreen({super.key});
 
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final todayTasks = ref.watch(todayTasksProvider);
+    final overdue = ref.watch(overdueTasksProvider);
+    final completedToday = ref.watch(completedTodayProvider);
+
+    // Simple transparent score for MVP
+    final totalRelevant = todayTasks.length + completedToday.length;
+    final score = totalRelevant == 0
+        ? null
+        : ((completedToday.length / totalRelevant) * 100).round();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Today'),
@@ -14,7 +35,9 @@ class TodayScreen extends ConsumerWidget {
             icon: const Icon(Icons.auto_awesome),
             tooltip: 'AI Coach',
             onPressed: () {
-              // TODO: Open AI Coach
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('AI Coach coming soon')),
+              );
             },
           ),
         ],
@@ -23,9 +46,8 @@ class TodayScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Greeting + Discipline Score placeholder
             Text(
-              'Good morning',
+              _greeting(),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -37,9 +59,9 @@ class TodayScreen extends ConsumerWidget {
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // Discipline Score card
+            // Discipline Score
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -47,9 +69,10 @@ class TodayScreen extends ConsumerWidget {
                   children: [
                     CircleAvatar(
                       radius: 28,
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
                       child: Text(
-                        '—',
+                        score == null ? '—' : '$score',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -65,7 +88,9 @@ class TodayScreen extends ConsumerWidget {
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           Text(
-                            'Complete tasks to build your score',
+                            score == null
+                                ? 'Complete tasks to build your score'
+                                : '${completedToday.length} completed · ${todayTasks.length} remaining',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
@@ -76,55 +101,74 @@ class TodayScreen extends ConsumerWidget {
               ),
             ),
 
-            const SizedBox(height: 24),
+            // Overdue section
+            if (overdue.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text(
+                'Overdue',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red.shade700,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              ...overdue.map((t) => TaskTile(task: t)),
+            ],
 
-            // Section: Focus Now
+            // Focus Now
+            const SizedBox(height: 24),
             Text(
               'Focus Now',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
             ),
-            const SizedBox(height: 12),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.flag_outlined),
-                title: const Text('No tasks yet'),
-                subtitle: const Text('Create your first task to get started'),
-                trailing: const Icon(Icons.add),
-                onTap: () {
-                  // TODO: Create task
-                },
-              ),
-            ),
+            const SizedBox(height: 8),
 
-            const SizedBox(height: 24),
+            if (todayTasks.isEmpty)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.check_circle_outline),
+                  title: const Text('All clear for now'),
+                  subtitle: const Text('Create a task or enjoy the breathing room'),
+                  trailing: const Icon(Icons.add),
+                  onTap: () => _openCreateTask(context),
+                ),
+              )
+            else
+              ...todayTasks.map((t) => TaskTile(task: t)),
 
-            // Section: Upcoming
-            Text(
-              'Coming Up',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            const Card(
-              child: ListTile(
-                leading: Icon(Icons.event_outlined),
-                title: Text('No meetings today'),
-                subtitle: Text('Your schedule is clear'),
+            // Completed today
+            if (completedToday.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text(
+                'Completed Today',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
-            ),
+              const SizedBox(height: 8),
+              ...completedToday.map((t) => TaskTile(task: t)),
+            ],
+
+            const SizedBox(height: 80),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Quick add task / meeting
-        },
+        onPressed: () => _openCreateTask(context),
         icon: const Icon(Icons.add),
-        label: const Text('Add'),
+        label: const Text('Add Task'),
       ),
+    );
+  }
+
+  void _openCreateTask(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => const CreateTaskSheet(),
     );
   }
 }
