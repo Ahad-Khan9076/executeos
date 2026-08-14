@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/utils/motivation.dart';
 import '../../application/task_list_provider.dart';
 import '../../domain/task.dart';
 
@@ -48,6 +49,24 @@ class TaskTile extends ConsumerWidget {
     return DateFormat('MMM d').format(due);
   }
 
+  void _onComplete(BuildContext context, WidgetRef ref) {
+    if (task.isCompleted) return;
+
+    ref.read(taskListProvider.notifier).completeTask(task.id);
+
+    final completedCount = ref.read(completedTodayProvider).length + 1;
+    final message = Motivation.forCount(completedCount);
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dueLabel = _dueLabel();
@@ -61,11 +80,8 @@ class TaskTile extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              // Complete checkbox
               GestureDetector(
-                onTap: () {
-                  ref.read(taskListProvider.notifier).completeTask(task.id);
-                },
+                onTap: () => _onComplete(context, ref),
                 child: Container(
                   width: 24,
                   height: 24,
