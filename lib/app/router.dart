@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/today/presentation/today_screen.dart';
 import '../features/tasks/presentation/tasks_screen.dart';
+import '../features/tasks/presentation/task_detail_screen.dart';
 import '../features/calendar/presentation/calendar_screen.dart';
 import '../features/ai_coach/presentation/ai_coach_screen.dart';
 
@@ -44,6 +45,15 @@ final goRouter = GoRouter(
           ),
         ),
       ],
+    ),
+    // Detail routes sit above the shell so they hide the bottom nav
+    GoRoute(
+      path: '/tasks/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return TaskDetailScreen(taskId: id);
+      },
     ),
   ],
 );
