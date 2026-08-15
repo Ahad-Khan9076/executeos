@@ -1,12 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/notification_service.dart';
 import '../data/task_local_repository.dart';
 import '../domain/task.dart';
 
 class TaskListNotifier extends StateNotifier<List<Task>> {
   final TaskLocalRepository _repo;
+  final NotificationService _notifications;
 
-  TaskListNotifier(this._repo) : super([]) {
+  TaskListNotifier(this._repo, this._notifications) : super([]) {
     _load();
   }
 
@@ -16,6 +18,10 @@ class TaskListNotifier extends StateNotifier<List<Task>> {
       _seed();
     } else {
       state = tasks;
+      // Re-schedule reminders for active tasks
+      for (final t in tasks.where((t) => !t.isCompleted && t.dueAt != null)) {
+        await _notifications.scheduleTaskReminders(t);
+      }
     }
   }
 
@@ -47,11 +53,15 @@ class TaskListNotifier extends StateNotifier<List<Task>> {
       ),
     ];
     _persist();
+    for (final t in state) {
+      _notifications.scheduleTaskReminders(t);
+    }
   }
 
   Future<void> addTask(Task task) async {
     state = [task, ...state];
     await _persist();
+    await _notifications.scheduleTaskReminders(task);
   }
 
   Future<void> updateTask(Task updated) async {
@@ -60,13 +70,18 @@ class TaskListNotifier extends StateNotifier<List<Task>> {
         if (t.id == updated.id) updated else t,
     ];
     await _persist();
+    await _notifications.cancelTaskReminders(updated);
+    if (!updated.isCompleted) {
+      await _notifications.scheduleTaskReminders(updated);
+    }
   }
 
   Future<void> completeTask(String id) async {
+    Task? completed;
     state = [
       for (final t in state)
         if (t.id == id)
-          t.copyWith(
+          completed = t.copyWith(
             status: TaskStatus.completed,
             completedAt: DateTime.now(),
           )
@@ -74,18 +89,29 @@ class TaskListNotifier extends StateNotifier<List<Task>> {
           t,
     ];
     await _persist();
+    if (completed != null) {
+      await _notifications.cancelTaskReminders(completed);
+    }
   }
 
   Future<void> deleteTask(String id) async {
+    final task = state.cast<Task?>().firstWhere(
+          (t) => t?.id == id,
+          orElse: () => null,
+        );
     state = state.where((t) => t.id != id).toList();
     await _persist();
+    if (task != null) {
+      await _notifications.cancelTaskReminders(task);
+    }
   }
 
   Future<void> postponeTask(String id, {Duration by = const Duration(days: 1)}) async {
+    Task? updated;
     state = [
       for (final t in state)
         if (t.id == id)
-          t.copyWith(
+          updated = t.copyWith(
             dueAt: (t.dueAt ?? DateTime.now()).add(by),
             status: TaskStatus.notStarted,
             clearCompletedAt: true,
@@ -94,6 +120,10 @@ class TaskListNotifier extends StateNotifier<List<Task>> {
           t,
     ];
     await _persist();
+    if (updated != null) {
+      await _notifications.cancelTaskReminders(updated);
+      await _notifications.scheduleTaskReminders(updated);
+    }
   }
 }
 
@@ -104,10 +134,10 @@ final taskLocalRepositoryProvider = Provider<TaskLocalRepository>((ref) {
 final taskListProvider =
     StateNotifierProvider<TaskListNotifier, List<Task>>((ref) {
   final repo = ref.watch(taskLocalRepositoryProvider);
-  return TaskListNotifier(repo);
+  final notifications = ref.watch(notificationServiceProvider);
+  return TaskListNotifier(repo, notifications);
 });
 
-/// Derived providers for the Today view
 final todayTasksProvider = Provider<List<Task>>((ref) {
   final tasks = ref.watch(taskListProvider);
   final now = DateTime.now();
