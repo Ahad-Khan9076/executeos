@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../application/task_list_provider.dart';
 import '../domain/task.dart';
+import 'edit_task_sheet.dart';
 
 class TaskDetailScreen extends ConsumerWidget {
   final String taskId;
@@ -29,6 +30,17 @@ class TaskDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Task'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                useSafeArea: true,
+                builder: (_) => EditTaskSheet(task: task),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
             onPressed: () => _confirmDelete(context, ref, task),
