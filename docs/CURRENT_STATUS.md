@@ -4,43 +4,47 @@
 
 ### Today Dashboard
 - Time-based greeting
-- Live Discipline Score (transparent)
-- Meetings for today (tap to open post-meeting follow-up)
-- Overdue tasks
-- Focus Now list
-- Completed Today list
+- Live Discipline Score
+- Meetings (tap → post-meeting follow-up)
+- Overdue / Focus Now / Completed sections
 - Quick Add Task
 
 ### Tasks
-- Create (title, notes, priority, due date, estimate)
-- Edit
-- Complete (with professional motivational message)
-- Postpone 1 day
-- Delete
-- Local persistence (survives app restart)
+- Create / Edit / Complete / Postpone / Delete
+- Multi-stage **local notifications** (1 day, 1 hour, 15 min before due)
+- Local persistence (survives restart)
 - Detail screen
 
 ### Meetings
-- Domain model
-- Seeded sample meeting
-- **Post-meeting follow-up prompt** (key differentiator)
-  - Creates a high-priority follow-up task for tomorrow
+- Domain model + seed data
+- Post-meeting follow-up prompt → creates high-priority task
 
 ### Calendar
-- Week strip navigation
-- Selected day view showing meetings + tasks due that day
+- Week strip + day view with meetings & tasks
+
+### AI Execution Coach (working)
+- Real chat interface
+- Answers from your actual data:
+  - "What should I focus on?"
+  - "Plan my day"
+  - "Why am I behind?"
+  - "What meetings do I have?"
+  - "How is my score?"
+  - "Schedule unfinished tasks"
+- Suggestion chips for one-tap questions
+
+### Notifications
+- Initialized on app start
+- Multi-stage reminders scheduled automatically on task create/update
+- Cancelled on complete/delete
+
+### Auth
+- Auth state provider (guest / authenticated)
+- Login screen + guest path
+- Ready for Supabase wiring
 
 ### Navigation
 - Bottom nav: Today / Tasks / Calendar / AI
-- Task detail opens above the shell
-
-### Auth
-- Login screen placeholder
-- Guest path available for development
-- Supabase setup guide in `docs/SUPABASE_SETUP.md`
-
-### AI Coach
-- Placeholder UI with suggested prompts
 
 ## How to run
 
@@ -50,9 +54,11 @@ flutter pub get
 flutter run
 ```
 
+> On first run, accept notification permissions so reminders work.
+
 ## Next high-value items
-1. Wire real Supabase Auth + cloud sync for tasks
+1. Real Supabase Auth + cloud sync
 2. Google Calendar bi-directional sync
-3. Real AI Coach (LLM + tool calling)
-4. Multi-stage reminders (local notifications)
-5. Goals module
+3. Upgrade AI Coach to LLM (keep rule-based as fallback)
+4. Goals module
+5. Custom reminder offsets per task
