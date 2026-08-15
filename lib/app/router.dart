@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/auth/presentation/login_screen.dart';
 import '../features/today/presentation/today_screen.dart';
 import '../features/tasks/presentation/tasks_screen.dart';
 import '../features/tasks/presentation/task_detail_screen.dart';
@@ -12,8 +13,12 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final goRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/today',
+  initialLocation: '/today', // Change to '/login' when auth is enforced
   routes: [
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => const LoginScreen(),
+    ),
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) {
@@ -46,7 +51,6 @@ final goRouter = GoRouter(
         ),
       ],
     ),
-    // Detail routes sit above the shell so they hide the bottom nav
     GoRoute(
       path: '/tasks/:id',
       parentNavigatorKey: _rootNavigatorKey,
