@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../meetings/application/meeting_list_provider.dart';
+import '../../meetings/presentation/post_meeting_followup_sheet.dart';
 import '../../tasks/application/task_list_provider.dart';
 import '../../tasks/presentation/widgets/task_tile.dart';
 import '../../tasks/presentation/create_task_sheet.dart';
@@ -119,9 +120,15 @@ class TodayScreen extends ConsumerWidget {
                     subtitle: Text(
                       '${DateFormat('h:mm a').format(m.startAt)} – ${DateFormat('h:mm a').format(m.endAt)}',
                     ),
-                    trailing: m.meetingLink != null
-                        ? const Icon(Icons.video_call_outlined)
-                        : null,
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        builder: (_) => PostMeetingFollowUpSheet(meeting: m),
+                      );
+                    },
                   ),
                 );
               }),
