@@ -39,8 +39,9 @@ dependencies:
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0
 
-  # Notifications (placeholder)
+  # Notifications
   flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
 
   cupertino_icons: ^1.0.8
 
