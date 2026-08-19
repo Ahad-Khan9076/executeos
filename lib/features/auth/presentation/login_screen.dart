@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class LoginScreen extends StatefulWidget {
+import '../application/auth_provider.dart';
+
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isSignUp = false;
 
   @override
   void dispose() {
@@ -20,12 +24,34 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _submit() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email and password required')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
-    // TODO: Wire to Supabase Auth
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (mounted) {
+
+    final auth = ref.read(authProvider.notifier);
+    final ok = _isSignUp
+        ? await auth.signUp(email, password)
+        : await auth.signInWithEmail(email, password);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (ok) {
       context.go('/today');
+    } else {
+      final error = ref.read(authProvider).error ?? 'Authentication failed';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
     }
   }
 
@@ -58,6 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
                 decoration: const InputDecoration(
                   labelText: 'Email',
                   border: OutlineInputBorder(),
@@ -67,36 +94,46 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 obscureText: true,
+                autofillHints: const [AutofillHints.password],
                 decoration: const InputDecoration(
                   labelText: 'Password',
                   border: OutlineInputBorder(),
                 ),
+                onSubmitted: (_) => _submit(),
               ),
               const SizedBox(height: 24),
               FilledButton(
-                onPressed: _isLoading ? null : _login,
+                onPressed: _isLoading ? null : _submit,
                 child: _isLoading
                     ? const SizedBox(
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Continue'),
+                    : Text(_isSignUp ? 'Create account' : 'Sign in'),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               TextButton(
-                onPressed: () {
-                  // Skip for now while building
-                  context.go('/today');
-                },
-                child: const Text('Continue as guest (dev)'),
+                onPressed: _isLoading
+                    ? null
+                    : () => setState(() => _isSignUp = !_isSignUp),
+                child: Text(
+                  _isSignUp
+                      ? 'Already have an account? Sign in'
+                      : 'Need an account? Sign up',
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        ref.read(authProvider.notifier).continueAsGuest();
+                        context.go('/today');
+                      },
+                child: const Text('Continue as guest'),
               ),
               const Spacer(),
-              Text(
-                'Supabase Auth will be wired next.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
             ],
           ),
         ),
