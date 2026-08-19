@@ -11,6 +11,7 @@ import '../../meetings/presentation/post_meeting_followup_sheet.dart';
 import '../../tasks/application/task_list_provider.dart';
 import '../../tasks/presentation/widgets/task_tile.dart';
 import '../../tasks/presentation/create_task_sheet.dart';
+import 'widgets/score_card.dart';
 
 class TodayScreen extends ConsumerWidget {
   const TodayScreen({super.key});
@@ -50,7 +51,6 @@ class TodayScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header row
                     Row(
                       children: [
                         Expanded(
@@ -59,14 +59,17 @@ class TodayScreen extends ConsumerWidget {
                             children: [
                               Text(
                                 _greeting(),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineSmall,
+                                style:
+                                    Theme.of(context).textTheme.headlineSmall,
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                DateFormat('EEEE, MMM d').format(DateTime.now()),
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                DateFormat('EEEE, MMM d')
+                                    .format(DateTime.now()),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
                                       color: Theme.of(context)
                                           .colorScheme
                                           .onSurfaceVariant,
@@ -83,14 +86,12 @@ class TodayScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.xl),
 
-                    // Score card — fintech "balance" style
-                    _ScoreCard(
+                    ScoreCard(
                       score: score,
                       completed: completedToday.length,
                       remaining: todayTasks.length,
                     ),
 
-                    // Goals
                     const SizedBox(height: AppSpacing.xl),
                     _SectionHeader(
                       title: 'Goals',
@@ -131,7 +132,6 @@ class TodayScreen extends ConsumerWidget {
                             },
                           )),
 
-                    // Meetings
                     if (todayMeetings.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.xl),
                       const _SectionHeader(title: 'Meetings'),
@@ -159,10 +159,9 @@ class TodayScreen extends ConsumerWidget {
                           )),
                     ],
 
-                    // Overdue
                     if (overdue.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.xl),
-                      _SectionHeader(
+                      const _SectionHeader(
                         title: 'Overdue',
                         titleColor: AppColors.overdue,
                       ),
@@ -170,7 +169,6 @@ class TodayScreen extends ConsumerWidget {
                       ...overdue.map((t) => TaskTile(task: t)),
                     ],
 
-                    // Focus Now
                     const SizedBox(height: AppSpacing.xl),
                     const _SectionHeader(title: 'Focus Now'),
                     const SizedBox(height: AppSpacing.sm),
@@ -184,7 +182,6 @@ class TodayScreen extends ConsumerWidget {
                     else
                       ...todayTasks.map((t) => TaskTile(task: t)),
 
-                    // Completed
                     if (completedToday.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.xl),
                       const _SectionHeader(title: 'Completed Today'),
@@ -222,102 +219,6 @@ class TodayScreen extends ConsumerWidget {
       builder: (context) => const CreateTaskSheet(),
     );
   }
-}
-
-// ── Shared UI pieces ──
-
-class _ScoreCard extends StatelessWidget {
-  final int? score;
-  final int completed;
-  final int remaining;
-
-  const _ScoreCard({
-    required this.score,
-    required this.completed,
-    required this.remaining,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1A73E8),
-            Color(0xFF1557B0),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              score == null ? '—' : '$score',
-              style: GoogleFontsFallback(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.lg),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Discipline Score',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  score == null
-                      ? 'Complete tasks to build your score'
-                      : '$completed done · $remaining left',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tiny helper so we don't need another import for a one-off style.
-class GoogleFontsFallback extends TextStyle {
-  const GoogleFontsFallback({
-    super.fontSize,
-    super.fontWeight,
-    super.color,
-  });
 }
 
 class _SectionHeader extends StatelessWidget {
@@ -376,8 +277,9 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: Theme.of(context).cardTheme.color,
+      color: isDark ? AppColors.cardDark : AppColors.cardLight,
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -388,7 +290,7 @@ class _EmptyCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.md),
             border: Border.all(
-              color: Theme.of(context).brightness == Brightness.dark
+              color: isDark
                   ? Colors.white.withValues(alpha: 0.06)
                   : Colors.black.withValues(alpha: 0.04),
             ),
@@ -438,15 +340,16 @@ class _GoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardTheme.color,
+          color: isDark ? AppColors.cardDark : AppColors.cardLight,
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark
+            color: isDark
                 ? Colors.white.withValues(alpha: 0.06)
                 : Colors.black.withValues(alpha: 0.04),
           ),
@@ -506,10 +409,11 @@ class _MeetingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Material(
-        color: Theme.of(context).cardTheme.color,
+        color: isDark ? AppColors.cardDark : AppColors.cardLight,
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -519,7 +423,7 @@ class _MeetingCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.md),
               border: Border.all(
-                color: Theme.of(context).brightness == Brightness.dark
+                color: isDark
                     ? Colors.white.withValues(alpha: 0.06)
                     : Colors.black.withValues(alpha: 0.04),
               ),
@@ -544,7 +448,10 @@ class _MeetingCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       Text(time, style: Theme.of(context).textTheme.bodySmall),
                     ],
                   ),
