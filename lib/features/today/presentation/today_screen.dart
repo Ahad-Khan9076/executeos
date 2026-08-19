@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../goals/application/goal_list_provider.dart';
+import '../../goals/presentation/create_goal_sheet.dart';
 import '../../meetings/application/meeting_list_provider.dart';
 import '../../meetings/presentation/post_meeting_followup_sheet.dart';
 import '../../tasks/application/task_list_provider.dart';
@@ -25,6 +27,7 @@ class TodayScreen extends ConsumerWidget {
     final overdue = ref.watch(overdueTasksProvider);
     final completedToday = ref.watch(completedTodayProvider);
     final todayMeetings = ref.watch(todayMeetingsProvider);
+    final activeGoals = ref.watch(activeGoalsProvider);
 
     final totalRelevant = todayTasks.length + completedToday.length;
     final score = totalRelevant == 0
@@ -100,6 +103,60 @@ class TodayScreen extends ConsumerWidget {
                 ),
               ),
             ),
+
+            // Active Goals
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Goals',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      useSafeArea: true,
+                      builder: (_) => const CreateGoalSheet(),
+                    );
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add'),
+                ),
+              ],
+            ),
+            if (activeGoals.isEmpty)
+              const Card(
+                child: ListTile(
+                  leading: Icon(Icons.flag_outlined),
+                  title: Text('No active goals'),
+                  subtitle: Text('Set a goal to stay oriented'),
+                ),
+              )
+            else
+              ...activeGoals.map((g) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const Icon(Icons.flag),
+                      title: Text(g.title),
+                      subtitle: g.targetDate != null
+                          ? Text(
+                              'Target ${DateFormat('MMM d, y').format(g.targetDate!)}',
+                            )
+                          : (g.description),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.check_circle_outline),
+                        tooltip: 'Mark complete',
+                        onPressed: () {
+                          ref.read(goalListProvider.notifier).completeGoal(g.id);
+                        },
+                      ),
+                    ),
+                  )),
 
             // Meetings today
             if (todayMeetings.isNotEmpty) ...[
