@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../application/task_list_provider.dart';
+import '../domain/task.dart';
 import 'widgets/task_tile.dart';
 import 'create_task_sheet.dart';
 
@@ -19,7 +20,6 @@ class TasksScreen extends ConsumerWidget {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // Header
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -41,14 +41,14 @@ class TasksScreen extends ConsumerWidget {
                           ? 'Nothing here yet'
                           : '${active.length} active  ·  ${completed.length} done',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
                   ],
                 ),
               ),
             ),
-
             if (active.isEmpty && completed.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
@@ -80,11 +80,12 @@ class TasksScreen extends ConsumerWidget {
                         Text(
                           'Create your first commitment and\nstart executing.',
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
                         ),
                       ],
                     ),
@@ -92,12 +93,41 @@ class TasksScreen extends ConsumerWidget {
                 ),
               )
             else
-              // Content
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                sliver: ApplicationSliverList(
-                  active: active,
-                  completed: completed,
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    if (active.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: AppSpacing.sm,
+                          top: AppSpacing.sm,
+                        ),
+                        child: Text(
+                          'Active',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      ...active.map((Task t) => TaskTile(task: t)),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                    if (completed.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: Text(
+                          'Completed',
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                        ),
+                      ),
+                      ...completed.map((Task t) => TaskTile(task: t)),
+                    ],
+                    const SizedBox(height: 100),
+                  ]),
                 ),
               ),
           ],
@@ -121,49 +151,6 @@ class TasksScreen extends ConsumerWidget {
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Task'),
       ),
-    );
-  }
-}
-
-class ApplicationSliverList extends StatelessWidget {
-  final List active;
-  final List completed;
-
-  const ApplicationSliverList({
-    super.key,
-    required this.active,
-    required this.completed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        if (active.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm, top: AppSpacing.sm),
-            child: Text(
-              'Active',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
-          ...active.map((t) => TaskTile(task: t)),
-          const SizedBox(height: AppSpacing.lg),
-        ],
-        if (completed.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Text(
-              'Completed',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ),
-          ...completed.map((t) => TaskTile(task: t)),
-        ],
-        const SizedBox(height: 100),
-      ]),
     );
   }
 }
