@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../application/task_list_provider.dart';
 import '../domain/task.dart';
 
@@ -47,7 +48,7 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
       estimatedMinutes: _estimatedMinutes,
     );
 
-    ref.read(taskListProvider.notifier).addTask(task);
+    await ref.read(taskListProvider.notifier).addTask(task);
 
     if (mounted) {
       Navigator.of(context).pop();
@@ -73,16 +74,23 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
     if (!mounted) return;
     final time = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(_dueAt ?? now.add(const Duration(hours: 1))),
+      initialTime: TimeOfDay.fromDateTime(
+        _dueAt ?? now.add(const Duration(hours: 1)),
+      ),
     );
 
-    if (time == null) {
-      setState(() => _dueAt = date);
-      return;
-    }
-
     setState(() {
-      _dueAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      if (time == null) {
+        _dueAt = date;
+      } else {
+        _dueAt = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          time.hour,
+          time.minute,
+        );
+      }
     });
   }
 
@@ -90,10 +98,10 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+        top: AppSpacing.lg,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -102,7 +110,7 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
           children: [
             Center(
               child: Container(
-                width: 40,
+                width: 36,
                 height: 4,
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.outlineVariant,
@@ -110,67 +118,62 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               'New Task',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: _titleController,
               autofocus: true,
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
                 labelText: 'What needs to be done?',
-                border: OutlineInputBorder(),
               ),
               onSubmitted: (_) => _submit(),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _descriptionController,
               textCapitalization: TextCapitalization.sentences,
               maxLines: 2,
               decoration: const InputDecoration(
                 labelText: 'Notes (optional)',
-                border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Priority
+            const SizedBox(height: AppSpacing.lg),
             Text('Priority', style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: 8,
               children: TaskPriority.values.map((p) {
                 final selected = _priority == p;
                 return ChoiceChip(
-                  label: Text(p.name[0].toUpperCase() + p.name.substring(1)),
+                  label: Text(
+                    p.name[0].toUpperCase() + p.name.substring(1),
+                  ),
                   selected: selected,
                   onSelected: (_) => setState(() => _priority = p),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 16),
-
-            // Due date & estimate
+            const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _pickDueDate,
-                    icon: const Icon(Icons.event, size: 18),
+                    icon: const Icon(Icons.event_rounded, size: 18),
                     label: Text(
                       _dueAt == null
                           ? 'Due date'
                           : '${_dueAt!.day}/${_dueAt!.month} ${_dueAt!.hour.toString().padLeft(2, '0')}:${_dueAt!.minute.toString().padLeft(2, '0')}',
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () async {
@@ -201,18 +204,21 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xl),
             FilledButton(
               onPressed: _isSubmitting ? null : _submit,
               child: _isSubmitting
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text('Create Task'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
           ],
         ),
       ),
