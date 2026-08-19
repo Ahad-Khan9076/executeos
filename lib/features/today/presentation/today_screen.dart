@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../goals/application/goal_list_provider.dart';
 import '../../goals/presentation/create_goal_sheet.dart';
 import '../../meetings/application/meeting_list_provider.dart';
@@ -35,219 +36,173 @@ class TodayScreen extends ConsumerWidget {
         : ((completedToday.length / totalRelevant) * 100).round();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Today'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.auto_awesome),
-            tooltip: 'AI Coach',
-            onPressed: () => context.go('/ai'),
-          ),
-        ],
-      ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text(
-              _greeting(),
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'What should you focus on right now?',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 20),
-
-            // Discipline Score
-            Card(
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor:
-                          Theme.of(context).colorScheme.primaryContainer,
-                      child: Text(
-                        score == null ? '—' : '$score',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
+                    // Header row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _greeting(),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineSmall,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat('EEEE, MMM d').format(DateTime.now()),
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _IconAction(
+                          icon: Icons.auto_awesome_rounded,
+                          onTap: () => context.go('/ai'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+
+                    // Score card — fintech "balance" style
+                    _ScoreCard(
+                      score: score,
+                      completed: completedToday.length,
+                      remaining: todayTasks.length,
+                    ),
+
+                    // Goals
+                    const SizedBox(height: AppSpacing.xl),
+                    _SectionHeader(
+                      title: 'Goals',
+                      actionLabel: 'Add',
+                      onAction: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          useSafeArea: true,
+                          backgroundColor:
+                              Theme.of(context).scaffoldBackgroundColor,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(AppRadius.lg),
                             ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Discipline Score',
-                            style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          Text(
-                            score == null
-                                ? 'Complete tasks to build your score'
-                                : '${completedToday.length} completed · ${todayTasks.length} remaining',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
+                          builder: (_) => const CreateGoalSheet(),
+                        );
+                      },
                     ),
+                    const SizedBox(height: AppSpacing.sm),
+                    if (activeGoals.isEmpty)
+                      const _EmptyCard(
+                        icon: Icons.flag_outlined,
+                        title: 'No active goals',
+                        subtitle: 'Set a direction for your work',
+                      )
+                    else
+                      ...activeGoals.map((g) => _GoalCard(
+                            title: g.title,
+                            subtitle: g.targetDate != null
+                                ? 'Target ${DateFormat('MMM d, y').format(g.targetDate!)}'
+                                : g.description,
+                            onComplete: () {
+                              ref
+                                  .read(goalListProvider.notifier)
+                                  .completeGoal(g.id);
+                            },
+                          )),
+
+                    // Meetings
+                    if (todayMeetings.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xl),
+                      const _SectionHeader(title: 'Meetings'),
+                      const SizedBox(height: AppSpacing.sm),
+                      ...todayMeetings.map((m) => _MeetingCard(
+                            title: m.title,
+                            time:
+                                '${DateFormat('h:mm a').format(m.startAt)} – ${DateFormat('h:mm a').format(m.endAt)}',
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                useSafeArea: true,
+                                backgroundColor: Theme.of(context)
+                                    .scaffoldBackgroundColor,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(AppRadius.lg),
+                                  ),
+                                ),
+                                builder: (_) =>
+                                    PostMeetingFollowUpSheet(meeting: m),
+                              );
+                            },
+                          )),
+                    ],
+
+                    // Overdue
+                    if (overdue.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xl),
+                      _SectionHeader(
+                        title: 'Overdue',
+                        titleColor: AppColors.overdue,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      ...overdue.map((t) => TaskTile(task: t)),
+                    ],
+
+                    // Focus Now
+                    const SizedBox(height: AppSpacing.xl),
+                    const _SectionHeader(title: 'Focus Now'),
+                    const SizedBox(height: AppSpacing.sm),
+                    if (todayTasks.isEmpty)
+                      _EmptyCard(
+                        icon: Icons.check_circle_outline_rounded,
+                        title: 'All clear',
+                        subtitle: 'Create a task or enjoy the space',
+                        onTap: () => _openCreateTask(context),
+                      )
+                    else
+                      ...todayTasks.map((t) => TaskTile(task: t)),
+
+                    // Completed
+                    if (completedToday.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xl),
+                      const _SectionHeader(title: 'Completed Today'),
+                      const SizedBox(height: AppSpacing.sm),
+                      ...completedToday.map((t) => TaskTile(task: t)),
+                    ],
+
+                    const SizedBox(height: 100),
                   ],
                 ),
               ),
             ),
-
-            // Active Goals
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Goals',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                TextButton.icon(
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      useSafeArea: true,
-                      builder: (_) => const CreateGoalSheet(),
-                    );
-                  },
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add'),
-                ),
-              ],
-            ),
-            if (activeGoals.isEmpty)
-              const Card(
-                child: ListTile(
-                  leading: Icon(Icons.flag_outlined),
-                  title: Text('No active goals'),
-                  subtitle: Text('Set a goal to stay oriented'),
-                ),
-              )
-            else
-              ...activeGoals.map((g) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: const Icon(Icons.flag),
-                      title: Text(g.title),
-                      subtitle: g.targetDate != null
-                          ? Text(
-                              'Target ${DateFormat('MMM d, y').format(g.targetDate!)}',
-                            )
-                          : (g.description),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.check_circle_outline),
-                        tooltip: 'Mark complete',
-                        onPressed: () {
-                          ref.read(goalListProvider.notifier).completeGoal(g.id);
-                        },
-                      ),
-                    ),
-                  )),
-
-            // Meetings today
-            if (todayMeetings.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Text(
-                'Meetings',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              ...todayMeetings.map((m) {
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: const Icon(Icons.event),
-                    title: Text(m.title),
-                    subtitle: Text(
-                      '${DateFormat('h:mm a').format(m.startAt)} – ${DateFormat('h:mm a').format(m.endAt)}',
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        useSafeArea: true,
-                        builder: (_) => PostMeetingFollowUpSheet(meeting: m),
-                      );
-                    },
-                  ),
-                );
-              }),
-            ],
-
-            // Overdue
-            if (overdue.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Text(
-                'Overdue',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.red.shade700,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              ...overdue.map((t) => TaskTile(task: t)),
-            ],
-
-            // Focus Now
-            const SizedBox(height: 24),
-            Text(
-              'Focus Now',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: 8),
-
-            if (todayTasks.isEmpty)
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.check_circle_outline),
-                  title: const Text('All clear for now'),
-                  subtitle: const Text('Create a task or enjoy the breathing room'),
-                  trailing: const Icon(Icons.add),
-                  onTap: () => _openCreateTask(context),
-                ),
-              )
-            else
-              ...todayTasks.map((t) => TaskTile(task: t)),
-
-            // Completed today
-            if (completedToday.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Text(
-                'Completed Today',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              ...completedToday.map((t) => TaskTile(task: t)),
-            ],
-
-            const SizedBox(height: 80),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openCreateTask(context),
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.add_rounded),
         label: const Text('Add Task'),
       ),
     );
@@ -258,7 +213,384 @@ class TodayScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.lg),
+        ),
+      ),
       builder: (context) => const CreateTaskSheet(),
+    );
+  }
+}
+
+// ── Shared UI pieces ──
+
+class _ScoreCard extends StatelessWidget {
+  final int? score;
+  final int completed;
+  final int remaining;
+
+  const _ScoreCard({
+    required this.score,
+    required this.completed,
+    required this.remaining,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1A73E8),
+            Color(0xFF1557B0),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              score == null ? '—' : '$score',
+              style: GoogleFontsFallback(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Discipline Score',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  score == null
+                      ? 'Complete tasks to build your score'
+                      : '$completed done · $remaining left',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tiny helper so we don't need another import for a one-off style.
+class GoogleFontsFallback extends TextStyle {
+  const GoogleFontsFallback({
+    super.fontSize,
+    super.fontWeight,
+    super.color,
+  });
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final Color? titleColor;
+
+  const _SectionHeader({
+    required this.title,
+    this.actionLabel,
+    this.onAction,
+    this.titleColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: titleColor,
+                ),
+          ),
+        ),
+        if (actionLabel != null && onAction != null)
+          TextButton(
+            onPressed: onAction,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(actionLabel!),
+          ),
+      ],
+    );
+  }
+}
+
+class _EmptyCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  const _EmptyCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).cardTheme.color,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.04),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              if (onTap != null)
+                Icon(
+                  Icons.add_rounded,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GoalCard extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final VoidCallback onComplete;
+
+  const _GoalCard({
+    required this.title,
+    this.subtitle,
+    required this.onComplete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardTheme.color,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.04),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: const Icon(
+                Icons.flag_rounded,
+                color: AppColors.primary,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleMedium),
+                  if (subtitle != null && subtitle!.isNotEmpty)
+                    Text(
+                      subtitle!,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: onComplete,
+              icon: const Icon(Icons.check_circle_outline_rounded),
+              color: AppColors.success,
+              tooltip: 'Mark complete',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MeetingCard extends StatelessWidget {
+  final String title;
+  final String time;
+  final VoidCallback onTap;
+
+  const _MeetingCard({
+    required this.title,
+    required this.time,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Material(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.black.withValues(alpha: 0.04),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: const Icon(
+                    Icons.event_rounded,
+                    color: Color(0xFF8B5CF6),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: Theme.of(context).textTheme.titleMedium),
+                      Text(time, style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IconAction extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _IconAction({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: isDark ? AppColors.cardDark : Colors.white,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        onTap: onTap,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.04),
+            ),
+          ),
+          child: Icon(icon, size: 22),
+        ),
+      ),
     );
   }
 }
