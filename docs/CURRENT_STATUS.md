@@ -1,50 +1,41 @@
 # ExecuteOS — Current Status
 
-## What works right now
+## Working features
 
-### Today Dashboard
-- Time-based greeting
-- Live Discipline Score
-- Meetings (tap → post-meeting follow-up)
-- Overdue / Focus Now / Completed sections
-- Quick Add Task
+### Core execution loop
+- Today dashboard (greeting, score, goals, meetings, tasks)
+- Tasks: create / edit / complete / postpone / delete
+- Multi-stage local notifications (1d / 1h / 15m)
+- Local persistence for tasks & goals
+- Post-meeting follow-up → creates task
+- Discipline score (transparent)
+- Motivational completion messages
 
-### Tasks
-- Create / Edit / Complete / Postpone / Delete
-- Multi-stage **local notifications** (1 day, 1 hour, 15 min before due)
-- Local persistence (survives restart)
-- Detail screen
+### Goals
+- Create goals with optional target date
+- Show on Today
+- Mark complete
+- Local persistence
 
-### Meetings
-- Domain model + seed data
-- Post-meeting follow-up prompt → creates high-priority task
-
-### Calendar
-- Week strip + day view with meetings & tasks
-
-### AI Execution Coach (working)
-- Real chat interface
-- Answers from your actual data:
-  - "What should I focus on?"
-  - "Plan my day"
-  - "Why am I behind?"
-  - "What meetings do I have?"
-  - "How is my score?"
-  - "Schedule unfinished tasks"
-- Suggestion chips for one-tap questions
-
-### Notifications
-- Initialized on app start
-- Multi-stage reminders scheduled automatically on task create/update
-- Cancelled on complete/delete
+### AI Execution Coach
+- Chat UI with suggestion chips
+- **Rule-based** coach (always available, uses real task/meeting data)
+- **LLM coach** when `OPENAI_API_KEY` is provided (falls back automatically)
 
 ### Auth
-- Auth state provider (guest / authenticated)
-- Login screen + guest path
-- Ready for Supabase wiring
+- Login / Sign up / Guest
+- Supabase Auth when `SUPABASE_URL` + `SUPABASE_ANON_KEY` are set
+- Local fallback when not configured
 
-### Navigation
-- Bottom nav: Today / Tasks / Calendar / AI
+### Calendar
+- Week strip + day agenda (tasks + meetings)
+- Google Calendar service **scaffolded** (OAuth implementation next)
+
+### Architecture
+- Flutter + Riverpod + go_router
+- Feature-first structure
+- Env via `--dart-define`
+- Supabase schema ready (`docs/SUPABASE_SCHEMA.sql`)
 
 ## How to run
 
@@ -54,11 +45,19 @@ flutter pub get
 flutter run
 ```
 
-> On first run, accept notification permissions so reminders work.
+With cloud + LLM:
 
-## Next high-value items
-1. Real Supabase Auth + cloud sync
-2. Google Calendar bi-directional sync
-3. Upgrade AI Coach to LLM (keep rule-based as fallback)
-4. Goals module
-5. Custom reminder offsets per task
+```bash
+flutter run \
+  --dart-define=SUPABASE_URL=... \
+  --dart-define=SUPABASE_ANON_KEY=... \
+  --dart-define=OPENAI_API_KEY=...
+```
+
+See `docs/SETUP.md` for full instructions.
+
+## Remaining polish (optional)
+1. Finish Google Calendar OAuth + bi-directional sync
+2. Push local tasks to Supabase when authenticated
+3. Custom reminder offsets per task
+4. Web / desktop targets
