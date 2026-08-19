@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/ai_coach_service.dart';
+import '../application/llm_coach_service.dart';
 
 class AiCoachScreen extends ConsumerStatefulWidget {
   const AiCoachScreen({super.key});
@@ -14,6 +15,7 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   final List<AiMessage> _messages = [];
+  bool _isThinking = false;
 
   @override
   void initState() {
@@ -32,22 +34,29 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
     super.dispose();
   }
 
-  void _send(String text) {
+  Future<void> _send(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty || _isThinking) return;
 
     setState(() {
       _messages.add(AiMessage(role: 'user', content: trimmed));
+      _isThinking = true;
     });
     _controller.clear();
+    _scrollToEnd();
 
-    final coach = ref.read(aiCoachServiceProvider);
-    final reply = coach.respond(trimmed);
+    final coach = ref.read(llmCoachServiceProvider);
+    final reply = await coach.respond(trimmed);
 
+    if (!mounted) return;
     setState(() {
       _messages.add(AiMessage(role: 'assistant', content: reply));
+      _isThinking = false;
     });
+    _scrollToEnd();
+  }
 
+  void _scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -61,13 +70,32 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final usingLlm = ref.watch(llmCoachServiceProvider).isLlmAvailable;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Coach'),
+        actions: [
+          if (usingLlm)
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Chip(
+                label: Text('LLM', style: TextStyle(fontSize: 11)),
+                visualDensity: VisualDensity.compact,
+              ),
+            )
+          else
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Chip(
+                label: Text('Local', style: TextStyle(fontSize: 11)),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+        ],
       ),
       body: Column(
         children: [
-          // Suggestion chips
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -86,8 +114,18 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
+              itemCount: _messages.length + (_isThinking ? 1 : 0),
               itemBuilder: (context, index) {
+                if (_isThinking && index == _messages.length) {
+                  return const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text('Thinking...'),
+                    ),
+                  );
+                }
+
                 final msg = _messages[index];
                 final isUser = msg.role == 'user';
                 return Align(
@@ -105,7 +143,9 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                     decoration: BoxDecoration(
                       color: isUser
                           ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.surfaceContainerHighest,
+                          : Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(16).copyWith(
                         bottomRight: isUser ? const Radius.circular(4) : null,
                         bottomLeft: !isUser ? const Radius.circular(4) : null,
@@ -132,6 +172,7 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                   Expanded(
                     child: TextField(
                       controller: _controller,
+                      enabled: !_isThinking,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: InputDecoration(
                         hintText: 'Ask your coach...',
@@ -148,7 +189,7 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(
-                    onPressed: () => _send(_controller.text),
+                    onPressed: _isThinking ? null : () => _send(_controller.text),
                     icon: const Icon(Icons.send),
                   ),
                 ],
@@ -165,7 +206,7 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
       padding: const EdgeInsets.only(right: 8),
       child: ActionChip(
         label: Text(label),
-        onPressed: () => _send(label),
+        onPressed: _isThinking ? null : () => _send(label),
       ),
     );
   }
