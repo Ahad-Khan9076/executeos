@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../application/task_list_provider.dart';
 import 'widgets/task_tile.dart';
 import 'create_task_sheet.dart';
@@ -15,44 +16,92 @@ class TasksScreen extends ConsumerWidget {
     final completed = tasks.where((t) => t.isCompleted).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tasks'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (active.isEmpty && completed.isEmpty)
-            const Center(
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            // Header
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.only(top: 48),
-                child: Text('No tasks yet. Create your first one!'),
-              ),
-            )
-          else ...[
-            if (active.isNotEmpty) ...[
-              Text(
-                'Active (${active.length})',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tasks',
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
-              ),
-              const SizedBox(height: 8),
-              ...active.map((t) => TaskTile(task: t)),
-              const SizedBox(height: 24),
-            ],
-            if (completed.isNotEmpty) ...[
-              Text(
-                'Completed (${completed.length})',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 4),
+                    Text(
+                      active.isEmpty && completed.isEmpty
+                          ? 'Nothing here yet'
+                          : '${active.length} active  ·  ${completed.length} done',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                     ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              ...completed.map((t) => TaskTile(task: t)),
-            ],
+            ),
+
+            if (active.isEmpty && completed.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.xl),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.check_circle_outline_rounded,
+                            color: AppColors.primary,
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(
+                          'No tasks yet',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Create your first commitment and\nstart executing.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else
+              // Content
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                sliver: ApplicationSliverList(
+                  active: active,
+                  completed: completed,
+                ),
+              ),
           ],
-          const SizedBox(height: 80),
-        ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
@@ -60,12 +109,61 @@ class TasksScreen extends ConsumerWidget {
             context: context,
             isScrollControlled: true,
             useSafeArea: true,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppRadius.lg),
+              ),
+            ),
             builder: (_) => const CreateTaskSheet(),
           );
         },
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.add_rounded),
         label: const Text('Add Task'),
       ),
+    );
+  }
+}
+
+class ApplicationSliverList extends StatelessWidget {
+  final List active;
+  final List completed;
+
+  const ApplicationSliverList({
+    super.key,
+    required this.active,
+    required this.completed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        if (active.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm, top: AppSpacing.sm),
+            child: Text(
+              'Active',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          ...active.map((t) => TaskTile(task: t)),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+        if (completed.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Text(
+              'Completed',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+          ...completed.map((t) => TaskTile(task: t)),
+        ],
+        const SizedBox(height: 100),
+      ]),
     );
   }
 }
